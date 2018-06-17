@@ -35,12 +35,21 @@ uint32_t interval_with_jitter(void)
 }
 
 int main(void) {
+    uint8_t buf[4];
+    int control_packets_tx;
+    int dis_tx;
+    int dio_tx;
+    int dao_tx;
+    int control_packets_rx;
+    int dis_rx;
+    int dio_rx;
+    int dao_rx;
     while (1) {
       //Send;
       printf("\n\n\n");
       printf("MAIN APPLICATION\n");
       // control packet counts
-      int control_packets_tx = gnrc_rpl_netstats.dio_tx_ucast_count
+      control_packets_tx = gnrc_rpl_netstats.dio_tx_ucast_count
       + gnrc_rpl_netstats.dio_tx_mcast_count
       + gnrc_rpl_netstats.dis_tx_ucast_count
       + gnrc_rpl_netstats.dis_tx_mcast_count
@@ -48,9 +57,21 @@ int main(void) {
       + gnrc_rpl_netstats.dao_tx_mcast_count
       + gnrc_rpl_netstats.dao_ack_tx_ucast_count
       + gnrc_rpl_netstats.dao_ack_tx_mcast_count;
+      dis_tx = gnrc_rpl_netstats.dis_tx_ucast_count
+        + gnrc_rpl_netstats.dis_tx_mcast_count;
+      dio_tx = gnrc_rpl_netstats.dio_tx_ucast_count
+      + gnrc_rpl_netstats.dio_tx_mcast_count;
+      dao_tx = gnrc_rpl_netstats.dao_tx_ucast_count
+      + gnrc_rpl_netstats.dao_tx_mcast_count
+      + gnrc_rpl_netstats.dao_ack_tx_ucast_count
+      + gnrc_rpl_netstats.dao_ack_tx_mcast_count;
       printf("control packets tx: %d\n", control_packets_tx);
+      printf("dodag solicit packets tx: %d\n", dis_tx);
+      printf("dodag info packets tx: %d\n", dio_tx);
+      printf("destination advertisement packets tx: %d\n", dao_tx);
 
-      int control_packets_rx = gnrc_rpl_netstats.dio_rx_ucast_count
+
+      control_packets_rx = gnrc_rpl_netstats.dio_rx_ucast_count
       + gnrc_rpl_netstats.dio_rx_mcast_count
       + gnrc_rpl_netstats.dis_rx_ucast_count
       + gnrc_rpl_netstats.dis_rx_mcast_count
@@ -59,23 +80,42 @@ int main(void) {
       + gnrc_rpl_netstats.dao_ack_rx_ucast_count
       + gnrc_rpl_netstats.dao_ack_rx_mcast_count;
       printf("control packets rx: %d\n", control_packets_rx);
+      dis_rx = gnrc_rpl_netstats.dis_rx_ucast_count
+        + gnrc_rpl_netstats.dis_rx_mcast_count;
+      dio_rx = gnrc_rpl_netstats.dio_rx_ucast_count
+      + gnrc_rpl_netstats.dio_rx_mcast_count;
+      dao_rx = gnrc_rpl_netstats.dao_rx_ucast_count
+      + gnrc_rpl_netstats.dao_rx_mcast_count
+      + gnrc_rpl_netstats.dao_ack_rx_ucast_count
+      + gnrc_rpl_netstats.dao_ack_rx_mcast_count;
+      printf("control packets rx: %d\n", control_packets_rx);
+      printf("dodag solicit packets rx: %d\n", dis_rx);
+      printf("dodag info packets rx: %d\n", dio_rx);
+      printf("destination advertisement packets rx: %d\n", dao_rx);
 
-      // parent stats
+      // parent/next hop stats
       for (int i = 0; i < GNRC_RPL_PARENTS_NUMOF; i++) {
         if (gnrc_rpl_parents[i].state == 1) {
-          printf("parent:\n ");
+          printf("parent link local ipv6\trank\tlink metric\nlink metric type\n");
+          ipv6_addr_print(&gnrc_rpl_parents[i].addr);
+          printf("%u\t", gnrc_rpl_parents[i].rank);
+          printf("%f\t", gnrc_rpl_parents[i].link_metric);
+          printf("%u\t", gnrc_rpl_parents[i].link_metric_type);
         }
       }
+      printf("number of parent changes: %d\n", parent_change_cntr);
+
+
+      // network layer stats
+      netstats_t *stats = gnrc_ipv6_netif_get_stats(7);
+      // stats->tx_mcast_count;
+      printf("ipv6 tx unicast: %u\n", (unsigned int) stats->tx_unicast_count);
+      printf("ipv6 tx success: %u\n", (unsigned int) stats->tx_success);
+      printf("ipv6 tx failed: %u\n", (unsigned int) stats->tx_failed);
 
       printf("\n\n\n");
 
-      // network layer stats
-      // netstats_t *stats = gnrc_ipv6_netif_get_stats(gnrc_ipv6_pid);
-      // int link_stats = stats->tx_mcast_count;
-      // printf("%d\n", link_stats);
-      // printf("ifaces: %d %d %d", gnrc_ipv6_pid, gnrc_rpl_pid, 1);
 
-      uint8_t buf[4];
 		  send_udp("fe80::d212:d55a:7b4e:6479",4747,buf,sizeof(buf));
       //Sleep
 		  xtimer_usleep(interval_with_jitter());
