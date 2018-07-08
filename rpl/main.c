@@ -35,7 +35,6 @@ uint32_t interval_with_jitter(void)
 }
 
 int main(void) {
-    uint8_t buf[4];
     int control_packets_tx;
     int dis_tx;
     int dio_tx;
@@ -44,6 +43,11 @@ int main(void) {
     int dis_rx;
     int dio_rx;
     int dao_rx;
+    int bufsize = 48;
+    uint8_t buf[bufsize];
+    for (int i = 0; i < 48; i++) {
+        buf[i] = 0x0;
+    }
     while (1) {
       //Send;
       printf("\n\n\n");
@@ -93,6 +97,20 @@ int main(void) {
       printf("dodag info packets rx: %d\n", dio_rx);
       printf("destination advertisement packets rx: %d\n", dao_rx);
 
+      buf[17] = dis_rx & 0xff;
+      buf[16] = (dis_rx >> 8) & 0xff; 
+      buf[15] = (dis_rx >> 16) & 0xff; 
+      buf[14] = (dis_rx >> 24) & 0xff;
+      buf[21] = dio_rx & 0xff;
+      buf[20] = (dio_rx >> 8) & 0xff; 
+      buf[19] = (dio_rx >> 16) & 0xff; 
+      buf[18] = (dio_rx >> 24) & 0xff;
+      buf[25] = dao_rx & 0xff;
+      buf[24] = (dao_rx >> 8) & 0xff; 
+      buf[23] = (dao_rx >> 16) & 0xff; 
+      buf[22] = (dao_rx >> 24) & 0xff;
+
+
       // parent/next hop stats
       for (int i = 0; i < GNRC_RPL_PARENTS_NUMOF; i++) {
         if (gnrc_rpl_parents[i].state == 1) {
@@ -104,19 +122,35 @@ int main(void) {
         }
       }
       printf("number of parent changes: %d\n", parent_change_cntr);
+      buf[5] = parent_change_cntr & 0xff;
+      buf[4] = (parent_change_cntr >> 8) & 0xff; 
+      buf[3] = (parent_change_cntr >> 16) & 0xff; 
+      buf[2] = (parent_change_cntr >> 24) & 0xff;
 
 
       // network layer stats
       netstats_t *stats = gnrc_ipv6_netif_get_stats(7);
-      // stats->tx_mcast_count;
       printf("ipv6 tx unicast: %u\n", (unsigned int) stats->tx_unicast_count);
       printf("ipv6 tx success: %u\n", (unsigned int) stats->tx_success);
       printf("ipv6 tx failed: %u\n", (unsigned int) stats->tx_failed);
-
+      buf[9] = stats->tx_success & 0xff;
+      buf[8] = (stats->tx_success >> 8) & 0xff; 
+      buf[7] = (stats->tx_success >> 16) & 0xff; 
+      buf[6] = (stats->tx_success >> 24) & 0xff;
+      buf[13] = stats->tx_failed & 0xff;
+      buf[12] = (stats->tx_failed >> 8) & 0xff; 
+      buf[11] = (stats->tx_failed >> 16) & 0xff; 
+      buf[10] = (stats->tx_failed >> 24) & 0xff;
       printf("\n\n\n");
 
+      // Tx Sequence number setting
+      buf[1]++;
+      if (buf[1] == 0) {
+          buf[0]++;
+      }
 
-		  send_udp("fe80::d212:d55a:7b4e:6479",4747,buf,sizeof(buf));
+      // TODO: change this IP address to border router/root node
+		  send_udp("fe80::d212:d55a:7b4e:6479",4747,buf,bufsize);
       //Sleep
 		  xtimer_usleep(interval_with_jitter());
     }
